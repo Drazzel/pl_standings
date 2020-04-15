@@ -1,0 +1,46 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+```
+
+```{r Creating The Old Boring League Table}
+pl <- read.csv("results/1819.csv")
+pl <- pl[c(1:8)]
+
+a <- pl %>% group_by(HomeTeam) %>% count(FTR) %>% spread(key = FTR, value= n)
+b <- pl %>% group_by(AwayTeam) %>% count(FTR) %>% spread(key = FTR, value= n)
+
+colnames(a) <- c("Team","L","D","W")
+colnames(b) <- c("Team","W","D","L")
+
+a <- a[c(1,4,3,2)]
+a <- a %>% replace(is.na(a),0)
+b <- b %>% replace(is.na(b),0)
+
+c <- bind_rows(a, 
+          b) %>% 
+  group_by(Team) %>% 
+  summarise_at(c("W","D","L"),sum)
+
+c <- c %>% mutate(pts=c(W*3+D*1+L*0))
+c <- arrange(c,desc(pts))
+
+d <- pl %>% group_by(HomeTeam) %>% summarise(GF=sum(FTHG), GA=sum(FTAG))
+e <- pl %>% group_by(AwayTeam) %>% summarise(GF=sum(FTAG), GA=sum(FTHG))
+
+colnames(d) <- c("Team","GF","GA")
+colnames(e) <- c("Team","GF","GA")
+
+f <- bind_rows(d, 
+          e) %>% 
+  group_by(Team) %>% 
+  summarise_at(c("GF","GA"),sum)
+
+table <- left_join(c,f,by="Team")
+```
+
