@@ -44,3 +44,31 @@ f <- bind_rows(d,
 table <- left_join(c,f,by="Team")
 ```
 
+Must install Cairo through terminal in order to install gdtools in order to install hrbrthemes
+- brew install cairo
+
+```{r Now For The Good Stuff - Setup}
+library(gganimate)
+library(hrbrthemes)
+library(lubridate)
+
+hrbrthemes::import_roboto_condensed()
+```
+
+```{r Now For The Good Stuff - Data}
+rm(list=ls())
+data <- read.csv("results/1819.csv")
+
+data$HT_pts <- ifelse(data$FTR=="H",3,ifelse(data$FTR=="D",1,0))
+
+data$AT_pts <- ifelse(data$FTR=="A",3,ifelse(data$FTR=="D",1,0))
+
+data$Date <- as_date(data$Date)
+
+
+```
+
+```{r Now For The Good Stuff - The Good Stuff}
+
+
+```
