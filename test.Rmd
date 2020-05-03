@@ -10,76 +10,74 @@ library(tidyverse)
 
 all_data <- data.frame()
 for(year in seq(1790, 2010, 10)) {
-+     data_path <- paste0('~/Dropbox/Github/bar/', year, '.csv')
-+     data <- read_csv(data_path)
-+     data <- data[1:5]
-+     colnames(data) <- c('Rank', 'City', 'State', 'Population', 'Region') 
-+     data$year <- year
-+     all_data <- rbind(all_data, data)
-+ }
+     data_path <- paste0('~/Dropbox/Github/bar/', year, '.csv')
+     data <- read_csv(data_path)
+     data <- data[1:5]
+     colnames(data) <- c('Rank', 'City', 'State', 'Population', 'Region') 
+     data$year <- year
+     all_data <- rbind(all_data, data)
+     }
 ```
 
 ```{r}
 # The datasets were inconcistent with state naming, sometimes using full names
-> # And sometimes abbreviations. This code standardizes on state names:
-> all_data$State_From_Abbrev <- state.name[match(all_data$State,state.abb)]
-> all_data <- all_data %>% mutate(State = case_when(is.na(State_From_Abbrev) ~ State,
-+                                                   TRUE ~ State_From_Abbrev)) %>%
-+                          select(-State_From_Abbrev)
-> # Get the list of cities that were at some point in the top 10 by population
-> top_cities <- all_data %>% filter(Rank <= 10) %>%
-+     select(City, State, Region) %>% distinct()
-> 
-> # Generate a list of all years from 1790 - 2010
-> all_years <- data.frame(year = seq(1790, 2010, 1))
-> 
-> # Create all combinations of city and year we'll need for our final dataset
-> all_combos <- merge(top_cities, all_years, all = T)
-> 
-> # This accomplishes 2 things:
-> # 1. Filters out cities that are not ever in the top 10
-> # 2. Adds rows for all years (currently blank) to our existing dataset for each city
-> all_data_interp <- merge(all_data, all_combos, all.y = T)
-> all_data_interp <- all_data_interp %>%
-+     group_by(City) %>%
-+     mutate(Population=approx(year,Population,year)$y)
-> 
-> data <- all_data_interp %>%
-+     group_by(year) %>%
-+     arrange(-Population) %>%
-+     mutate(rank=row_number()) %>%
-+     filter(rank<=10)
+# And sometimes abbreviations. This code standardizes on state names:
+all_data$State_From_Abbrev <- state.name[match(all_data$State,state.abb)]
+all_data <- all_data %>% mutate(State = case_when(is.na(State_From_Abbrev) ~ State,
+                                                  TRUE ~ State_From_Abbrev)) %>%
+  select(-State_From_Abbrev)
+# Get the list of cities that were at some point in the top 10 by population
+top_cities <- all_data %>% filter(Rank <= 10) %>%
+     select(City, State, Region) %>% distinct()
+ 
+# Generate a list of all years from 1790 - 2010
+all_years <- data.frame(year = seq(1790, 2010, 1))
+ 
+# Create all combinations of city and year we'll need for our final dataset
+all_combos <- merge(top_cities, all_years, all = T)
+ 
+# This accomplishes 2 things:
+# 1. Filters out cities that are not ever in the top 10
+# 2. Adds rows for all years (currently blank) to our existing dataset for each city
+all_data_interp <- merge(all_data, all_combos, all.y = T)
+all_data_interp <- all_data_interp %>%
+    group_by(City) %>%
+    mutate(Population=approx(year,Population,year)$y)
+ 
+data <- all_data_interp %>%
+    group_by(year) %>%
+    arrange(-Population) %>%
+    mutate(rank=row_number()) %>%
+    filter(rank<=10)
 
 ```
 
 ```{r}
-> p <- data %>%
-+     ggplot(aes(x = -rank,y = Population, group = City)) +
-+         geom_tile(aes(y = Population / 2, height = Population, fill = Region), width = 0.9) +
-+         geom_text(aes(label = City), hjust = "right", colour = "black", fontface = "bold", nudge_y = -100000) +
-+         geom_text(aes(label = scales::comma(Population)), hjust = "left", nudge_y = 100000, colour = "grey30") +
-+         coord_flip(clip="off") +
-+         scale_fill_manual(name = 'Region', values = c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3")) +
-+         scale_x_discrete("") +
-+         scale_y_continuous("",labels=scales::comma) +
-+         hrbrthemes::theme_ipsum(plot_title_size = 32, subtitle_size = 24, caption_size = 20, base_size = 20) +
-+         theme(panel.grid.major.y=element_blank(),
-+               panel.grid.minor.x=element_blank(),
-+               legend.position = c(0.4, 0.2),
-+               plot.margin = margin(1,1,1,2,"cm"),
-+               axis.text.y=element_blank()) +
-+         # gganimate code to transition by year:
-+         transition_time(year) +
-+         ease_aes('cubic-in-out') +
-+         labs(title='Largest Cities in the United States',
-+              subtitle='Population in {round(frame_time,0)}',
-+              caption='Source: United States Census
-+ michaeltoth.me / @michael_toth')
-> anim <- animate(p, nframes = 350, fps = 120, end_pause = 50, width = 1200, height = 900)
-Frame 350 (100%)
-Finalizing encoding... done!
-> anim_save("out4.gif", anim)
-> View(data)
-> View(data)
+p <- data %>%
+    ggplot(aes(x = -rank,y = Population, group = City)) +
+        geom_tile(aes(y = Population / 2, height = Population, fill = Region), width = 0.9) +
+        geom_text(aes(label = City), hjust = "right", colour = "black", fontface = "bold", nudge_y = -100000) +
+        geom_text(aes(label = scales::comma(Population)), hjust = "left", nudge_y = 100000, colour = "grey30") +
+        coord_flip(clip="off") +
+        scale_fill_manual(name = 'Region', values = c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3")) +
+        scale_x_discrete("") +
+        scale_y_continuous("",labels=scales::comma) +
+        hrbrthemes::theme_ipsum(plot_title_size = 32, subtitle_size = 24, caption_size = 20, base_size = 20) +
+        theme(panel.grid.major.y=element_blank(),
+              panel.grid.minor.x=element_blank(),
+              legend.position = c(0.4, 0.2),
+              plot.margin = margin(1,1,1,2,"cm"),
+              axis.text.y=element_blank()) +
+# gganimate code to transition by year:
+        transition_time(year) +
+        ease_aes('cubic-in-out') +
+        labs(title='Largest Cities in the United States',
+             subtitle='Population in {round(frame_time,0)}',
+             caption='Source: United States Census
+             michaeltoth.me / @michael_toth')
+anim <- animate(p, nframes = 350, fps = 120, end_pause = 50, width = 1200, height = 900)
+
+anim_save("out4.gif", anim)
+View(data)
 ```
 
