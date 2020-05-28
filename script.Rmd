@@ -106,9 +106,10 @@ anim <- animate(p, width = 1200, height = 900)
 anim_save("out5.gif", anim)
 ```
 
-Performing the visualization by date is actually a much better representation of the feel of the title chase. As matchweeks get shifted due to cup obligations forcing rescheduling of matches, using date actually highlights that while gaps may a matter of points in matchweeks, they feel significantly more broad as teams get their matchweeks completed early.
+Performing the visualization by date is actually a much better representation of the feel of the title chase. As matchweeks get shifted due to cup obligations forcing rescheduling of matches, using date actually highlights that while gaps may be a matter of points in matchweeks, they feel significantly more broad as teams get their matchweeks completed early.
 
 ```{r Now For The Good Stuff - By Day - Data}
+#Add goal differential to split ties accurately
 rm(list=ls())
 data <- read.csv("results/1819.csv")
 data$Date <- dmy(data$Date)
@@ -116,23 +117,68 @@ data$Date <- dmy(data$Date)
 data$HT_pts <- ifelse(data$FTR=="H",3,ifelse(data$FTR=="D",1,0))
 data$AT_pts <- ifelse(data$FTR=="A",3,ifelse(data$FTR=="D",1,0))
 
-a <- data %>% select(Date,HomeTeam,HT_pts)
-b <- data %>% select(Date,AwayTeam,AT_pts)
+data$HT_gls <- data$FTHG-data$FTAG
+data$AT_gls <- data$FTAG-data$FTHG
 
-colnames(a) <- c("date","team","pts")
-colnames(b) <- c("date","team","pts")
+a <- data %>% select(Date,HomeTeam,HT_pts,HT_gls)
+b <- data %>% select(Date,AwayTeam,AT_pts,AT_gls)
+
+colnames(a) <- c("date","team","pts","diff")
+colnames(b) <- c("date","team","pts","diff")
 
 c <- rbind(a,b)
 c <- arrange(c,date)
 c <- c %>% group_by(team) %>% mutate(cumpts=cumsum(pts))
+c <- c %>% group_by(team) %>% mutate(cumdiff=cumsum(diff))
 
 date_list <- data.frame(date=seq(min(c$date),max(c$date),1))
 
 date_team_comb <- merge(unique(c$team),date_list,all=T)
 
-# Still gotta figure out how to do the dates properly. But each team needs each date represented with the total cumulative points upto that date. Once that is complete, it will be easy to created the updated rankings in Line 136 by switching group_by(week) to group_by(date).
-
-
-c <- c %>% group_by(date) %>% arrange(desc(cumpts)) %>% mutate(rank=1:20)
+# Still gotta figure out how to do the dates properly. But each team needs each date represented with the total cumulative points upto that date. Once that is complete, it will be easy to created the updated rankings in Line 143 by switching group_by(week) to group_by(date).
+c <- right_join(c, date_team_comb, by=c("team"="x", "date"="date"))
+#worth trying to recreate the data set without the intermittent dates
+d <- c %>% group_by(team) %>% fill(c(pts,diff,cumpts,cumdiff),.direction = ("down"))
+d <- d %>% replace(is.na(.),0)
+d <- d %>% group_by(date) %>% arrange(desc(cumpts),desc(cumdiff)) %>% mutate(rank=1:20)
 ```
 
+```{r Color}
+#colors identified using https://teamcolorcodes.com/soccer/premier-league-color-codes/
+group.colors <- tibble(team=unique(d$team),color=c("#6CABDD","#C8102E","#034694","#132257","#EF0107","#DA291C","#FDB913","#003399","#003090","#7A263A","#FBEE23","1B458F","#241F20","#DA291C","#6C1D45","#D71920","#0057B8","#0070B5","#CC0000","#0E63AD"))
+
+test <- as.data.frame(t(group.colors))
+test <- as.data.frame(lapply(test,as.character))
+colnames(test) <- group.colors$team
+group.colors <- (test[2,])
+group.colors[] <- lapply(group.colors,as.character)
+```
+
+
+```{r Now For The Good Stuff - By Date - The Good Stuff}
+p <- d %>% 
+    ggplot(aes(x = -rank,y = cumpts)) +
+        geom_tile(aes(y = cumpts / 2, height = cumpts, fill=team), width = 0.9) +
+        geom_text(aes(label = team), hjust = "right", colour = "#d3d3d3", fontface = "bold", size = 12) +
+        geom_text(aes(label = scales::comma(cumpts)), hjust = "left", colour = "grey30", fontface = "bold", size = 12) +
+        scale_fill_manual(values = group.colors)  +
+        coord_flip(clip="off") + 
+        scale_x_discrete("") + 
+        scale_y_continuous("",labels=scales::comma) +
+        hrbrthemes::theme_ipsum(plot_title_size = 32, subtitle_size = 24, caption_size = 20, base_size = 20) +
+        theme(panel.grid.major.y=element_blank(),
+              panel.grid.minor.x=element_blank(),
+              legend.position = "none",
+              plot.margin = margin(1,1,1,2,"cm"),
+              axis.text.y=element_blank()) +
+# gganimate code to transition states by date:
+        transition_states(date, transition_length = 20, state_length = .1, wrap = FALSE) +
+        ease_aes('cubic-in-out') + 
+        labs(title='2018-2019 Premier League Standings') #need to reinsert date into the visualization to see when state changes are happening.
+
+
+#all that remains is smoothing out the animation
+anim <- animate(p, fps=30, duration=120, width = 1200, height = 900, end_pause = 10)
+
+anim_save("out6.gif", anim)
+```
