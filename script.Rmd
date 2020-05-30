@@ -174,11 +174,40 @@ p <- d %>%
 # gganimate code to transition states by date:
         transition_states(date, transition_length = 20, state_length = .1, wrap = FALSE) +
         ease_aes('cubic-in-out') + 
-        labs(title='2018-2019 Premier League Standings') #need to reinsert date into the visualization to see when state changes are happening.
+        labs(title='2018-2019 Premier League Standings',
+             subtitle="As of ") #need to reinsert date into the visualization to see when state changes are happening.
 
 
-#all that remains is smoothing out the animation
+#all that remains is smoothing out the animation - choosing fps and duration far better than attempting to choose the correct number of frames
 anim <- animate(p, fps=30, duration=120, width = 1200, height = 900, end_pause = 10)
 
 anim_save("out6.gif", anim)
 ```
+
+```{r}
+q <- d %>% 
+    ggplot(aes(x = -rank,y = cumpts)) +
+        geom_tile(aes(y = cumpts / 2, height = cumpts, fill=team), width = 0.9) +
+        geom_text(aes(label = team), hjust = "right", colour = "#d3d3d3", fontface = "bold", size = 12) +
+        geom_text(aes(label = scales::comma(cumpts)), hjust = "left", colour = "grey30", fontface = "bold", size = 12) +
+        scale_fill_manual(values = group.colors)  +
+        coord_flip(clip="off") + 
+        scale_x_discrete("") + 
+        scale_y_continuous("",labels=scales::comma) +
+        hrbrthemes::theme_ipsum(plot_title_size = 32, subtitle_size = 24, caption_size = 20, base_size = 20) +
+        theme(panel.grid.major.y=element_blank(),
+              panel.grid.minor.x=element_blank(),
+              legend.position = "none",
+              plot.margin = margin(1,1,1,2,"cm"),
+              axis.text.y=element_blank()) +
+  transition_time(date) +
+        ease_aes('cubic-in-out') + 
+        labs(title='Premier League Standings',
+             subtitle='Points As Of {round(frame_time,0)}')
+
+anim <- animate(q, fps=30, duration=60, width = 1200, height = 900, end_pause = 10)
+
+anim_save("out7.gif", anim)
+  
+```
+
